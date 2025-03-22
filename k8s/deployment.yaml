@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:latest
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: ecommerce
+        - name: POSTGRES_PASSWORD
+          value: Pg1234
+        - name: POSTGRES_DB
+          value: ecommerce
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fakeshop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fakeshop
+  template:
+    metadata:
+      labels:
+        app: fakeshop
+    spec:
+      containers:
+      - name: fakeshop
+        image: gilbertofl/fake-shop:v2
+        ports: 
+        - containerPort: 5000
+        env:
+        - name: DB_HOST
+          value: postgres
+        - name: DB_USER
+          value: ecommerce
+        - name: DB_PASSWORD
+          value: Pg1234
+        - name: DB_NAME
+          value: ecommerce          
+        - name: FLASK_APP
+          value: index.py          
+
+## para testar execute no comamdo do terminal: 
+## kubectl port-forward pod/fakeshop-6d79dbd9db-7h2bw 5000:5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  type: ClusterIP
+  ports:
+     - port: 5432
+  selector:
+    app: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fakeshop
+spec:
+  ## NodePort é para acessar externamente.Fica exposta essa porta
+  ## NodePort foi quando usamos local. Na nuvem é o LoadBalancer
+  ##type: NodePort
+  type: LoadBalancer
+  ports:
+     - port: 80
+       targetPort: 5000
+       nodePort: 30000 
+  selector:
+    app: fakeshop
